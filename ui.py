@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
 import json
-from google import genai 
+import google.generativeai as genai
 from dotenv import load_dotenv  
 
 # ============================================================================
@@ -29,7 +29,6 @@ load_dotenv()  # loads from .env in local, ignored in production
 
 
 
-load_dotenv()
 
 API_URL = st.secrets.get("API_URL", os.getenv("API_URL"))
 DATABASE_URL = st.secrets.get("DATABASE_URL", os.getenv("DATABASE_URL"))
@@ -58,8 +57,8 @@ if not GEMINI_API_KEY:
 # GEMINI CLIENT SETUP
 
 # ============================================================================
-
-client = genai.Client(api_key=GEMINI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+client = genai.GenerativeModel("gemini-1.5-flash")
 
 st.set_page_config(
     page_title="Insurance Price Predictor",
