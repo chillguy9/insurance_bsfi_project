@@ -58,7 +58,7 @@ if not GEMINI_API_KEY:
 
 # ============================================================================
 genai.configure(api_key=GEMINI_API_KEY)
-client = genai.GenerativeModel("gemini-1.5-flash")
+model= genai.GenerativeModel("gemini-1.5-flash")
 
 st.set_page_config(
     page_title="Insurance Price Predictor",
@@ -358,17 +358,26 @@ def get_insurance_tips(data: dict) -> list:
 
 def generate_recommendation(data: dict) -> dict:
 
-    if not client:
+    if not GEMINI_API_KEY:
+
         return {"error": "Gemini API key not configured"}
 
     prompt = f"""
+
     Give insurance recommendation in JSON.
+
     Age: {data['age']}
+
     BMI: {data['bmi']}
+
     Smoker: {data['smoker']}
+
     Charges: {data['charges']}
+
     Format:
+
     {{
+
       "risk_level": "",
 
       "tips": ["", "", ""],
@@ -387,59 +396,28 @@ def generate_recommendation(data: dict) -> dict:
 
     """
 
-    models = [
+    try:
 
-        "gemini-2.5-flash",          # primary
+        response = model.generate_content(prompt)
 
-        "gemini-flash-lite-latest", # fallback
+        text = response.text
 
-        "gemini-2.0-flash"          # last fallback
+        result = json.loads(text)
 
-    ]
+       
+        if not all(k in result for k in ["risk_level", "tips", "plans"]):
 
-    for model_name in models:
+            raise ValueError("Invalid response structure")
 
-        try:
+        if len(result["tips"]) != 3 or len(result["plans"]) != 3:
 
-            response = client.models.generate_content(
+            raise ValueError("Expected exactly 3 tips and 3 plans")
 
-                model=model_name,
+        return result
 
-                contents=prompt,
+    except Exception as e:
 
-                config={"response_mime_type": "application/json"}
-
-            )
-
-            text = getattr(response, "text", None)
-
-            if not text:
-
-                raise ValueError("Empty response from model")
-
-            result = json.loads(text)
-
-            # ✅ Validate structure
-
-            if not all(k in result for k in ["risk_level", "tips", "plans"]):
-
-                raise ValueError("Invalid response structure")
-
-            if len(result["tips"]) != 3 or len(result["plans"]) != 3:
-
-                raise ValueError("Expected exactly 3 tips and 3 plans")
-
-            return result
-
-        except Exception as e:
-
-            if "429" in str(e):
-
-                continue  # try next model
-
-            return {"error": str(e)}
-
-    return {"error": "All models failed (quota exceeded)"}
+        return {"error": str(e)}
 # ============================================================================
 # CUSTOM STYLING
 # ============================================================================
