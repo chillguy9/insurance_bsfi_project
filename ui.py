@@ -359,64 +359,54 @@ def get_insurance_tips(data: dict) -> list:
 def generate_recommendation(data: dict) -> dict:
 
     if not GEMINI_API_KEY:
-
         return {"error": "Gemini API key not configured"}
 
     prompt = f"""
-
-    Give insurance recommendation in JSON.
+    Give insurance recommendation in JSON only (no markdown).
 
     Age: {data['age']}
-
     BMI: {data['bmi']}
-
     Smoker: {data['smoker']}
-
     Charges: {data['charges']}
 
     Format:
-
     {{
-
       "risk_level": "",
-
       "tips": ["", "", ""],
-
       "plans": [
-
         {{"name": "", "reason": ""}},
-
         {{"name": "", "reason": ""}},
-
         {{"name": "", "reason": ""}}
-
       ]
-
     }}
-
     """
 
     try:
-
         response = model.generate_content(prompt)
 
-        text = response.text
+        text = getattr(response, "text", None)
+        if not text:
+            raise ValueError("Empty response from Gemini")
+
+        text = text.strip()
+
+        # 🔥 Remove ```json wrapper if present
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            text = text.replace("json", "").strip()
 
         result = json.loads(text)
 
-       
+        # ✅ Validate structure
         if not all(k in result for k in ["risk_level", "tips", "plans"]):
-
             raise ValueError("Invalid response structure")
 
         if len(result["tips"]) != 3 or len(result["plans"]) != 3:
-
             raise ValueError("Expected exactly 3 tips and 3 plans")
 
         return result
 
     except Exception as e:
-
         return {"error": str(e)}
 # ============================================================================
 # CUSTOM STYLING
